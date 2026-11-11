@@ -1,34 +1,61 @@
 
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PAUZ - Night Run</title>
+
 <style>
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:grid;place-items:center;background:#100c20;color:white;font-family:Arial}
+body{
+margin:0;min-height:100vh;display:grid;place-items:center;
+background:#100c20;color:white;font-family:Arial,sans-serif
+}
 main{width:min(1100px,96vw);text-align:center}
 h1{color:#c7a3ff;letter-spacing:7px;margin:8px 0 2px;font-size:27px}
 .subtitle{color:#d9c9ff;letter-spacing:4px;font-size:12px;margin:0 0 14px}
-.game-frame{position:relative;overflow:hidden;width:70%;max-width:800px;margin:auto;border:5px solid #514071;border-radius:28px;background:#17112f;box-shadow:0 0 25px #8c58dc55}
+.game-frame{
+position:relative;overflow:hidden;width:70%;max-width:800px;
+margin:auto;border:5px solid #514071;border-radius:28px;
+background:#17112f;box-shadow:0 0 25px #8c58dc55
+}
 canvas{display:block;width:100%;height:auto}
-.hud{position:absolute;top:5%;left:5%;right:5%;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
-.timer{color:#fff000;font-size:clamp(22px,4vw,38px);font-weight:bold;text-shadow:0 0 15px #fff000}
+.hud{
+position:absolute;top:5%;left:5%;right:5%;
+display:flex;justify-content:space-between;align-items:center;
+pointer-events:none
+}
+.timer{
+color:#fff000;font-size:clamp(22px,4vw,38px);
+font-weight:bold;text-shadow:0 0 15px #fff000
+}
 .energy{display:flex;align-items:center;gap:12px}
 .heart{font-size:23px}
 .energy small{display:block;text-align:right;margin-bottom:5px;font-weight:bold}
-.energy-track{width:clamp(90px,17vw,180px);height:13px;border-radius:20px;background:#37264d;overflow:hidden}
-.energy-fill{height:100%;width:100%;background:linear-gradient(90deg,#9a5bff,#d8a8ff);transition:width .2s}
+.energy-track{
+width:clamp(90px,17vw,180px);height:13px;
+border-radius:20px;background:#37264d;overflow:hidden
+}
+.energy-fill{
+height:100%;width:100%;
+background:linear-gradient(90deg,#9a5bff,#d8a8ff);
+transition:width .2s
+}
 #status{min-height:24px;color:#d9c7ff;margin:12px}
-#restart{display:none;border:0;border-radius:12px;padding:12px 26px;background:#9668df;color:white;font-weight:bold;cursor:pointer}
+#restart{
+display:none;border:0;border-radius:12px;padding:12px 26px;
+background:#9668df;color:white;font-weight:bold;cursor:pointer
+}
 .instructions{color:#d8caff;font-weight:bold;margin:14px}
 .link{color:#d8caff}
 @media(max-width:700px){.game-frame{width:94%}}
 </style>
 </head>
+
 <body>
 <main>
+
 <h1>PAUZ</h1>
 <p class="subtitle">NIGHT RUN</p>
 
@@ -39,7 +66,9 @@ canvas{display:block;width:100%;height:auto}
 <span class="heart">♥</span>
 <div>
 <small id="energyText">100%</small>
-<div class="energy-track"><div class="energy-fill" id="energyFill"></div></div>
+<div class="energy-track">
+<div class="energy-fill" id="energyFill"></div>
+</div>
 </div>
 </div>
 </div>
@@ -48,13 +77,15 @@ canvas{display:block;width:100%;height:auto}
 
 <p id="status">Waiting for controller...</p>
 <button id="restart">PLAY AGAIN</button>
-<p class="instructions">Phone controller: Hold □ = Move · Press B = Jump</p>
+<p class="instructions">Hold □ = Move / Run &nbsp; | &nbsp; Press B = Jump</p>
 <p id="controllerLink"></p>
+
 </main>
 
 <script>
 const canvas=document.getElementById('game');
 const ctx=canvas.getContext('2d');
+
 const statusText=document.getElementById('status');
 const timerText=document.getElementById('timer');
 const energyFill=document.getElementById('energyFill');
@@ -63,12 +94,17 @@ const restartButton=document.getElementById('restart');
 
 const session=crypto.randomUUID();
 const protocol=location.protocol==='https:'?'wss:':'ws:';
-const ws=new WebSocket(`${protocol}//${location.host}/?session=${session}&role=host`);
-const controllerUrl=`${location.origin}/controller.html?session=${session}`;
+
+const ws=new WebSocket(
+`${protocol}//${location.host}/?session=${session}&role=host`
+);
+
+const controllerUrl=
+`${location.origin}/controller.html?session=${session}`;
 
 document.getElementById('controllerLink').innerHTML=
-`<a class="link" href="${controllerUrl}">Open phone controller</a> ·
-<button id="copyLink" style="background:none;border:0;color:#d8caff;text-decoration:underline;cursor:pointer">Copy link</button>`;
+`<a class="link" href="${controllerUrl}">Open phone controller</a>
+ · <button id="copyLink" style="background:none;border:0;color:#d8caff;text-decoration:underline;cursor:pointer">Copy link</button>`;
 
 document.getElementById('copyLink').onclick=()=>{
 navigator.clipboard.writeText(controllerUrl)
@@ -76,13 +112,31 @@ navigator.clipboard.writeText(controllerUrl)
 .catch(()=>statusText.textContent='Copy the URL from the address bar.');
 };
 
-let connected=false,started=false,gameOver=false;
-let elapsed=0,energy=100,score=0,lastFrame=0;
-let paused=false,panel=null,interventionUntil=0,interventionShown=false;
-let bDown=false,squareDown=false,lastHit=0;
+// GAME STATE
+let connected=false;
+let started=false;
+let gameOver=false;
+let elapsed=0;
+let energy=100;
+let score=0;
+let lastFrame=0;
+let paused=false;
+let panel=null;
+let interventionUntil=0;
+let interventionShown=false;
+
+let bDown=false;
+let squareDown=false;
+let lastHit=0;
 
 const ground=535;
-const player={x:170,y:535,vy:0,jumping:false};
+
+const player={
+x:170,
+y:ground,
+vy:0,
+jumping:false
+};
 
 const stars=Array.from({length:100},()=>({
 x:Math.random()*1200,
@@ -93,7 +147,9 @@ phase:Math.random()*6
 
 let obstacles=[];
 
+// RESET GAME
 function resetGame(){
+
 player.x=170;
 player.y=ground;
 player.vy=0;
@@ -108,72 +164,121 @@ started=true;
 gameOver=false;
 paused=false;
 panel=null;
+
 interventionUntil=0;
 interventionShown=false;
+
 elapsed=0;
 energy=100;
 score=0;
 lastHit=0;
+
 bDown=false;
 squareDown=false;
 
 timerText.textContent='00:00';
 energyFill.style.width='100%';
 energyText.textContent='100%';
+
 restartButton.style.display='none';
 statusText.textContent='Run started!';
 }
 
 restartButton.onclick=resetGame;
 
-ws.onopen=()=>statusText.textContent='Waiting for phone controller...';
+// WEBSOCKET CONNECTION
+ws.onopen=()=>{
+statusText.textContent='Waiting for phone controller...';
+};
 
 ws.onclose=()=>{
 connected=false;
 statusText.textContent='Connection lost. Refresh laptop to reconnect.';
 };
 
-ws.onerror=()=>statusText.textContent='Connection error.';
+ws.onerror=()=>{
+statusText.textContent='Connection error.';
+};
 
-ws.onmessage=e=>{
-let d;
-try{d=JSON.parse(e.data)}catch(_){return}
+ws.onmessage=(event)=>{
 
-if(d.type==='status'){
-connected=!!d.connected;
+let data;
+
+try{
+data=JSON.parse(event.data);
+}catch(error){
+return;
+}
+
+if(data.type==='status'){
+connected=!!data.connected;
+
 statusText.textContent=connected?
 'Controller connected! Ready to play.':
 'Waiting for controller...';
 }
 
-if(d.type==='input'){
-if(d.button==='B'){
-if(d.pressed&&!bDown)handleAction('B');
-bDown=!!d.pressed;
-}
-else if(d.button==='SQUARE'){
-if(d.pressed&&!squareDown)handleAction('SQUARE');
-squareDown=!!d.pressed;
-}
+if(data.type==='input'){
+
+if(data.button==='B'){
+
+if(data.pressed && !bDown){
+handleJump();
 }
 
-if(d.type==='panel'){
-if(d.panel==='controls')togglePanel('controls');
-if(d.panel==='help')togglePanel('help');
+bDown=!!data.pressed;
+
 }
+
+if(data.button==='SQUARE'){
+
+squareDown=!!data.pressed;
+
+if(data.pressed && !started && !gameOver){
+resetGame();
+squareDown=true;
+}
+
+}
+
+}
+
+if(data.type==='panel'){
+
+if(data.panel==='controls'){
+togglePanel('controls');
+}
+
+if(data.panel==='help'){
+togglePanel('help');
+}
+
+}
+
 };
 
-function handleAction(button){
-if(gameOver||panel||interventionUntil>performance.now())return;
+// IMMEDIATE JUMP
+function handleJump(){
 
-if(!started)resetGame();
-
-if(button==='B'){
-jumpQueued=true;
-}
+if(gameOver || panel || paused || interventionUntil>performance.now()){
+return;
 }
 
+if(!started){
+resetGame();
+}
+
+// Jump immediately when B is pressed
+if(!player.jumping){
+player.vy=-23;
+player.jumping=true;
+}
+
+}
+
+// PANELS
 function togglePanel(which){
+
 if(gameOver)return;
 
 if(panel===which){
@@ -184,45 +289,60 @@ else{
 panel=which;
 paused=true;
 }
+
 }
 
+// BACKGROUND
 function mountain(offset,base,height,color,step){
+
 ctx.fillStyle=color;
 ctx.beginPath();
 ctx.moveTo(0,base);
 
 for(let x=-step;x<=1300;x+=step){
+
 let wave=Math.sin((x+offset)*.008)*height*.35;
+
 ctx.lineTo(x,base-height+wave);
 ctx.lineTo(x+step/2,base+5);
+
 }
 
 ctx.lineTo(1200,600);
 ctx.lineTo(0,600);
 ctx.closePath();
 ctx.fill();
+
 }
 
 function background(t){
-let g=ctx.createLinearGradient(0,0,0,675);
-g.addColorStop(0,'#17102e');
-g.addColorStop(.65,'#251743');
-g.addColorStop(1,'#100d20');
 
-ctx.fillStyle=g;
+let gradient=ctx.createLinearGradient(0,0,0,675);
+
+gradient.addColorStop(0,'#17102e');
+gradient.addColorStop(.65,'#251743');
+gradient.addColorStop(1,'#100d20');
+
+ctx.fillStyle=gradient;
 ctx.fillRect(0,0,1200,675);
 
-stars.forEach(s=>{
-ctx.globalAlpha=.45+Math.sin(t*.002+s.phase)*.35;
+// STARS
+stars.forEach(star=>{
+
+ctx.globalAlpha=.45+Math.sin(t*.002+star.phase)*.35;
 ctx.fillStyle='#fff';
+
 ctx.beginPath();
-ctx.arc(s.x,s.y,s.size,0,Math.PI*2);
+ctx.arc(star.x,star.y,star.size,0,Math.PI*2);
 ctx.fill();
+
 });
 
 ctx.globalAlpha=1;
 
+// MOON GLOW
 let glow=ctx.createRadialGradient(920,220,5,920,220,90);
+
 glow.addColorStop(0,'#e2c5ff');
 glow.addColorStop(.3,'#a66de0');
 glow.addColorStop(1,'#a66de000');
@@ -237,9 +357,11 @@ ctx.beginPath();
 ctx.arc(920,220,35,0,Math.PI*2);
 ctx.fill();
 
+// MOUNTAINS
 mountain(t*.008,540,200,'#24173e',180);
 mountain(t*.014,550,140,'#30204f',230);
 
+// GROUND
 ctx.fillStyle='#17102e';
 ctx.fillRect(0,ground,1200,140);
 
@@ -248,21 +370,28 @@ ctx.fillRect(0,ground,1200,5);
 
 ctx.fillStyle='#49336a';
 ctx.fillRect(0,ground+6,1200,4);
+
 }
 
+// STICKMAN
 function drawPlayer(t){
-let swing=started&&!gameOver&&squareDown&&!player.jumping?
-Math.sin(t*.025):0;
+
+let moving=squareDown && started && !gameOver && !player.jumping;
+
+let swing=moving?Math.sin(t*.025):0;
 
 ctx.save();
 ctx.translate(player.x,player.y);
+
 ctx.shadowColor='#d8a4ff';
 ctx.shadowBlur=24;
+
 ctx.strokeStyle='#d9b4ff';
 ctx.lineWidth=9;
 ctx.lineCap='round';
 ctx.lineJoin='round';
 
+// HEAD
 let headY=-105-Math.abs(swing)*5;
 
 ctx.fillStyle='#e5c7ff';
@@ -270,50 +399,73 @@ ctx.beginPath();
 ctx.arc(0,headY,19,0,Math.PI*2);
 ctx.fill();
 
+// BODY
 ctx.beginPath();
 ctx.moveTo(0,headY+22);
 ctx.lineTo(0,-48);
 ctx.stroke();
 
+// ARMS
 ctx.beginPath();
+
 ctx.moveTo(0,-85);
 ctx.lineTo(-38-swing*18,-65);
+
 ctx.moveTo(0,-85);
 ctx.lineTo(38+swing*18,-65);
+
 ctx.stroke();
 
+// LEGS
 ctx.beginPath();
+
 ctx.moveTo(0,-48);
 ctx.lineTo(-12+swing*20,-3);
+
 ctx.moveTo(0,-48);
 ctx.lineTo(12-swing*20,-3);
+
 ctx.stroke();
 
 ctx.restore();
+
 }
 
-function drawObstacle(o){
+// OBSTACLES
+function drawObstacle(obstacle){
+
 ctx.save();
+
 ctx.shadowColor='#b78aff';
 ctx.shadowBlur=35;
 
-let g=ctx.createLinearGradient(o.x,ground-o.height,o.x+o.width,ground);
-g.addColorStop(0,'#c7a1ff');
-g.addColorStop(1,'#7550bd');
+let gradient=ctx.createLinearGradient(
+obstacle.x,
+ground-obstacle.height,
+obstacle.x+obstacle.width,
+ground
+);
 
-ctx.fillStyle=g;
+gradient.addColorStop(0,'#c7a1ff');
+gradient.addColorStop(1,'#7550bd');
+
+ctx.fillStyle=gradient;
+
 ctx.beginPath();
-ctx.moveTo(o.x,ground);
-ctx.lineTo(o.x+15,ground-o.height*.8);
-ctx.lineTo(o.x+o.width*.65,ground-o.height);
-ctx.lineTo(o.x+o.width,ground);
+ctx.moveTo(obstacle.x,ground);
+ctx.lineTo(obstacle.x+15,ground-obstacle.height*.8);
+ctx.lineTo(obstacle.x+obstacle.width*.65,ground-obstacle.height);
+ctx.lineTo(obstacle.x+obstacle.width,ground);
 ctx.closePath();
 ctx.fill();
 
 ctx.restore();
+
 }
 
+// OVERLAY SCREENS
 function overlay(title,lines){
+
 ctx.fillStyle='#090615e8';
 ctx.fillRect(0,0,1200,675);
 
@@ -321,141 +473,200 @@ ctx.textAlign='center';
 ctx.fillStyle='#e5c9ff';
 ctx.shadowColor='#b78aff';
 ctx.shadowBlur=18;
+
 ctx.font='bold 48px Arial';
 ctx.fillText(title,600,210);
 
 ctx.shadowBlur=0;
 ctx.font='25px Arial';
 
-lines.forEach((v,i)=>ctx.fillText(v,600,280+i*48));
+lines.forEach((line,index)=>{
+ctx.fillText(line,600,280+index*48);
+});
 
 ctx.font='18px Arial';
 ctx.fillStyle='#cbb5ed';
 ctx.fillText('Use the same guide button to close',600,575);
+
 }
 
+// DRAW GAME
 function draw(t){
+
 ctx.clearRect(0,0,1200,675);
+
 background(t);
+
 obstacles.forEach(drawObstacle);
+
 drawPlayer(t);
 
 if(!started){
+
 overlay('NIGHT RUN',[
 'Use the book button for controls',
 'Use the ? button for instructions',
 'Press B or □ on your phone to start'
 ]);
+
 }
 
 if(interventionUntil>performance.now()){
+
 overlay('TAKE A MOMENT!',[
 'Your controls stay the same.',
 'Hold □ = MOVE     Press B = JUMP',
-'Keep playing when you are ready.'
+'Continue when you are ready.'
 ]);
+
 }
+
 else if(panel==='controls'){
+
 overlay('CONTROLS GUIDE',[
 'HOLD □ = MOVE / RUN',
 'PRESS B = JUMP',
 'Release □ to stop moving.'
 ]);
+
 }
+
 else if(panel==='help'){
+
 overlay('HOW TO PLAY',[
-'Hold □ to move forward and avoid obstacles.',
+'Hold □ to move forward.',
 'Press B to jump over obstacles.',
-'Release □ whenever you want to stop.',
+'Release □ to stop moving.',
 'Each collision reduces health by 25%.',
 'Survive as long as you can!'
 ]);
+
 }
 
 if(gameOver){
+
 overlay('RUN ENDED',[
 `Score: ${score}`,
 `Health: ${Math.round(energy)}%`,
 'Press PLAY AGAIN below to restart'
 ]);
-}
+
 }
 
+}
+
+// GAME UPDATE
 function update(dt,t){
-if(!started||gameOver||paused||panel||interventionUntil>t)return;
 
-elapsed+=dt/1000;
-
-if(elapsed>=30&&!interventionShown){
-interventionShown=true;
-interventionUntil=t+4200;
-paused=true;
+if(!started || gameOver || paused || panel || interventionUntil>t){
 return;
 }
 
+elapsed+=dt/1000;
+
+// 30 SECOND INTERVENTION
+if(elapsed>=30 && !interventionShown){
+
+interventionShown=true;
+interventionUntil=t+4200;
+paused=true;
+
+return;
+
+}
+
+// TIMER
 timerText.textContent=
 String(Math.floor(elapsed/60)).padStart(2,'0')+':'+
 String(Math.floor(elapsed%60)).padStart(2,'0');
 
-const moving=squareDown;
-const speed=8;
-
+// PLAYER PHYSICS
 player.y+=player.vy;
 player.vy+=.8;
 
 if(player.y>=ground){
+
 player.y=ground;
 player.vy=0;
 player.jumping=false;
+
 }
 
-if(moving){
-obstacles.forEach(o=>{
-o.x-=speed;
+// OBSTACLES MOVE ONLY WHILE SQUARE IS HELD
+if(squareDown){
 
-if(o.x< -100){
-o.x=1300+Math.random()*350;
+const speed=8;
+
+obstacles.forEach(obstacle=>{
+
+obstacle.x-=speed;
+
+// RESPAWN
+if(obstacle.x< -100){
+
+obstacle.x=1300+Math.random()*350;
 score++;
+
 }
 
+// COLLISION
 let hit=
-player.x+20>o.x+12&&
-player.x-20<o.x+o.width-10&&
-player.y>ground-o.height+10&&
+player.x+20>obstacle.x+12 &&
+player.x-20<obstacle.x+obstacle.width-10 &&
+player.y>ground-obstacle.height+10 &&
 player.y-105<ground;
 
-if(hit&&t-lastHit>1100){
+if(hit && t-lastHit>1100){
+
 energy=Math.max(0,energy-25);
 lastHit=t;
 
 if(energy<=0){
+
 gameOver=true;
+
 statusText.textContent='Run ended! Try again.';
+
 restartButton.style.display='inline-block';
-}
-}
-});
+
 }
 
+}
+
+});
+
+}
+
+// HEALTH BAR
 energyFill.style.width=energy+'%';
 energyText.textContent=Math.round(energy)+'%';
+
 }
 
+// MAIN LOOP
 function loop(t){
+
 let dt=Math.min(t-(lastFrame||t),34);
+
 lastFrame=t;
 
-if(interventionUntil&&t>=interventionUntil){
+// END INTERVENTION
+if(interventionUntil && t>=interventionUntil){
+
 interventionUntil=0;
 paused=false;
+
 }
 
 update(dt,t);
 draw(t);
+
 requestAnimationFrame(loop);
+
 }
 
 requestAnimationFrame(loop);
+
 </script>
 </body>
 </html>
