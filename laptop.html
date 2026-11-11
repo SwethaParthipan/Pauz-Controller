@@ -9,47 +9,108 @@
 <style>
 *{box-sizing:border-box}
 body{
-margin:0;min-height:100vh;display:grid;place-items:center;
-background:#100c20;color:white;font-family:Arial,sans-serif
+margin:0;
+min-height:100vh;
+display:grid;
+place-items:center;
+background:#100c20;
+color:white;
+font-family:Arial,sans-serif;
 }
 main{width:min(1100px,96vw);text-align:center}
-h1{color:#c7a3ff;letter-spacing:7px;margin:8px 0 2px;font-size:27px}
-.subtitle{color:#d9c9ff;letter-spacing:4px;font-size:12px;margin:0 0 14px}
-.game-frame{
-position:relative;overflow:hidden;width:70%;max-width:800px;
-margin:auto;border:5px solid #514071;border-radius:28px;
-background:#17112f;box-shadow:0 0 25px #8c58dc55
+h1{
+color:#c7a3ff;
+letter-spacing:7px;
+margin:8px 0 2px;
+font-size:27px;
 }
-canvas{display:block;width:100%;height:auto}
+.subtitle{
+color:#d9c9ff;
+letter-spacing:4px;
+font-size:12px;
+margin:0 0 14px;
+}
+.game-frame{
+position:relative;
+overflow:hidden;
+width:70%;
+max-width:800px;
+margin:auto;
+border:5px solid #514071;
+border-radius:28px;
+background:#17112f;
+box-shadow:0 0 25px #8c58dc55;
+}
+canvas{
+display:block;
+width:100%;
+height:auto;
+}
 .hud{
-position:absolute;top:5%;left:5%;right:5%;
-display:flex;justify-content:space-between;align-items:center;
-pointer-events:none
+position:absolute;
+top:5%;
+left:5%;
+right:5%;
+display:flex;
+justify-content:space-between;
+align-items:center;
+pointer-events:none;
 }
 .timer{
-color:#fff000;font-size:clamp(22px,4vw,38px);
-font-weight:bold;text-shadow:0 0 15px #fff000
+color:#fff000;
+font-size:clamp(22px,4vw,38px);
+font-weight:bold;
+text-shadow:0 0 15px #fff000;
 }
-.energy{display:flex;align-items:center;gap:12px}
+.energy{
+display:flex;
+align-items:center;
+gap:12px;
+}
 .heart{font-size:23px}
-.energy small{display:block;text-align:right;margin-bottom:5px;font-weight:bold}
+.energy small{
+display:block;
+text-align:right;
+margin-bottom:5px;
+font-weight:bold;
+}
 .energy-track{
-width:clamp(90px,17vw,180px);height:13px;
-border-radius:20px;background:#37264d;overflow:hidden
+width:clamp(90px,17vw,180px);
+height:13px;
+border-radius:20px;
+background:#37264d;
+overflow:hidden;
 }
 .energy-fill{
-height:100%;width:100%;
+height:100%;
+width:100%;
 background:linear-gradient(90deg,#9a5bff,#d8a8ff);
-transition:width .2s
+transition:width .2s;
 }
-#status{min-height:24px;color:#d9c7ff;margin:12px}
+#status{
+min-height:24px;
+color:#d9c7ff;
+margin:12px;
+}
 #restart{
-display:none;border:0;border-radius:12px;padding:12px 26px;
-background:#9668df;color:white;font-weight:bold;cursor:pointer
+display:none;
+border:0;
+border-radius:12px;
+padding:12px 26px;
+background:#9668df;
+color:white;
+font-weight:bold;
+cursor:pointer;
 }
-.instructions{color:#d8caff;font-weight:bold;margin:14px}
+.instructions{
+color:#d8caff;
+font-weight:bold;
+margin:14px;
+}
 .link{color:#d8caff}
-@media(max-width:700px){.game-frame{width:94%}}
+@media(max-width:700px){
+.game-frame{width:94%}
+}
 </style>
 </head>
 
@@ -60,8 +121,11 @@ background:#9668df;color:white;font-weight:bold;cursor:pointer
 <p class="subtitle">NIGHT RUN</p>
 
 <div class="game-frame">
+
 <div class="hud">
+
 <div class="timer" id="timer">00:00</div>
+
 <div class="energy">
 <span class="heart">♥</span>
 <div>
@@ -71,18 +135,30 @@ background:#9668df;color:white;font-weight:bold;cursor:pointer
 </div>
 </div>
 </div>
+
 </div>
+
 <canvas id="game" width="1200" height="675"></canvas>
+
 </div>
 
 <p id="status">Waiting for controller...</p>
+
 <button id="restart">PLAY AGAIN</button>
-<p class="instructions">Hold □ = Move / Run &nbsp; | &nbsp; Press B = Jump</p>
+
+<p class="instructions">
+First 30 seconds: B = Jump | □ = Run
+<br>
+After 30 seconds: B = Run | □ = Jump
+</p>
+
 <p id="controllerLink"></p>
 
 </main>
 
 <script>
+
+// ELEMENTS
 const canvas=document.getElementById('game');
 const ctx=canvas.getContext('2d');
 
@@ -92,8 +168,11 @@ const energyFill=document.getElementById('energyFill');
 const energyText=document.getElementById('energyText');
 const restartButton=document.getElementById('restart');
 
+// CONNECTION
 const session=crypto.randomUUID();
-const protocol=location.protocol==='https:'?'wss:':'ws:';
+
+const protocol=
+location.protocol==='https:'?'wss:':'ws:';
 
 const ws=new WebSocket(
 `${protocol}//${location.host}/?session=${session}&role=host`
@@ -108,25 +187,34 @@ document.getElementById('controllerLink').innerHTML=
 
 document.getElementById('copyLink').onclick=()=>{
 navigator.clipboard.writeText(controllerUrl)
-.then(()=>statusText.textContent='Controller link copied!')
-.catch(()=>statusText.textContent='Copy the URL from the address bar.');
+.then(()=>{
+statusText.textContent='Controller link copied!';
+})
+.catch(()=>{
+statusText.textContent='Copy the URL from the address bar.';
+});
 };
+
 
 // GAME STATE
 let connected=false;
 let started=false;
 let gameOver=false;
+
 let elapsed=0;
 let energy=100;
 let score=0;
+
 let lastFrame=0;
 let paused=false;
 let panel=null;
+
 let interventionUntil=0;
 let interventionShown=false;
 
 let bDown=false;
 let squareDown=false;
+
 let lastHit=0;
 
 const ground=535;
@@ -146,6 +234,7 @@ phase:Math.random()*6
 }));
 
 let obstacles=[];
+
 
 // RESET GAME
 function resetGame(){
@@ -177,16 +266,20 @@ bDown=false;
 squareDown=false;
 
 timerText.textContent='00:00';
+
 energyFill.style.width='100%';
 energyText.textContent='100%';
 
 restartButton.style.display='none';
+
 statusText.textContent='Run started!';
+
 }
 
 restartButton.onclick=resetGame;
 
-// WEBSOCKET CONNECTION
+
+// WEBSOCKET EVENTS
 ws.onopen=()=>{
 statusText.textContent='Waiting for phone controller...';
 };
@@ -206,24 +299,29 @@ let data;
 
 try{
 data=JSON.parse(event.data);
-}catch(error){
+}
+catch(error){
 return;
 }
 
+// CONNECTION STATUS
 if(data.type==='status'){
+
 connected=!!data.connected;
 
 statusText.textContent=connected?
 'Controller connected! Ready to play.':
 'Waiting for controller...';
+
 }
 
+// BUTTON INPUT
 if(data.type==='input'){
 
 if(data.button==='B'){
 
 if(data.pressed && !bDown){
-handleJump();
+handleAction('B');
 }
 
 bDown=!!data.pressed;
@@ -232,17 +330,17 @@ bDown=!!data.pressed;
 
 if(data.button==='SQUARE'){
 
+if(data.pressed && !squareDown){
+handleAction('SQUARE');
+}
+
 squareDown=!!data.pressed;
 
-if(data.pressed && !started && !gameOver){
-resetGame();
-squareDown=true;
 }
 
 }
 
-}
-
+// CONTROLS GUIDE / HELP
 if(data.type==='panel'){
 
 if(data.panel==='controls'){
@@ -257,10 +355,16 @@ togglePanel('help');
 
 };
 
-// IMMEDIATE JUMP
-function handleJump(){
 
-if(gameOver || panel || paused || interventionUntil>performance.now()){
+// BUTTON ACTIONS
+function handleAction(button){
+
+if(
+gameOver ||
+panel ||
+paused ||
+interventionUntil>performance.now()
+){
 return;
 }
 
@@ -268,13 +372,21 @@ if(!started){
 resetGame();
 }
 
-// Jump immediately when B is pressed
-if(!player.jumping){
+// CHECK CONTROL MAPPING
+const swapped=elapsed>=30;
+
+const jumpButton=swapped?'SQUARE':'B';
+
+// JUMP IMMEDIATELY
+if(button===jumpButton && !player.jumping){
+
 player.vy=-23;
 player.jumping=true;
+
 }
 
 }
+
 
 // PANELS
 function togglePanel(which){
@@ -282,15 +394,20 @@ function togglePanel(which){
 if(gameOver)return;
 
 if(panel===which){
+
 panel=null;
 paused=false;
+
 }
 else{
+
 panel=which;
 paused=true;
+
 }
 
 }
+
 
 // BACKGROUND
 function mountain(offset,base,height,color,step){
@@ -310,10 +427,12 @@ ctx.lineTo(x+step/2,base+5);
 
 ctx.lineTo(1200,600);
 ctx.lineTo(0,600);
+
 ctx.closePath();
 ctx.fill();
 
 }
+
 
 function background(t){
 
@@ -330,6 +449,7 @@ ctx.fillRect(0,0,1200,675);
 stars.forEach(star=>{
 
 ctx.globalAlpha=.45+Math.sin(t*.002+star.phase)*.35;
+
 ctx.fillStyle='#fff';
 
 ctx.beginPath();
@@ -348,11 +468,13 @@ glow.addColorStop(.3,'#a66de0');
 glow.addColorStop(1,'#a66de000');
 
 ctx.fillStyle=glow;
+
 ctx.beginPath();
 ctx.arc(920,220,90,0,Math.PI*2);
 ctx.fill();
 
 ctx.fillStyle='#b98bea';
+
 ctx.beginPath();
 ctx.arc(920,220,35,0,Math.PI*2);
 ctx.fill();
@@ -373,10 +495,13 @@ ctx.fillRect(0,ground+6,1200,4);
 
 }
 
+
 // STICKMAN
 function drawPlayer(t){
 
-let moving=squareDown && started && !gameOver && !player.jumping;
+let moving=
+(started && !gameOver && !player.jumping) &&
+(elapsed>=30 ? bDown : squareDown);
 
 let swing=moving?Math.sin(t*.025):0;
 
@@ -395,6 +520,7 @@ ctx.lineJoin='round';
 let headY=-105-Math.abs(swing)*5;
 
 ctx.fillStyle='#e5c7ff';
+
 ctx.beginPath();
 ctx.arc(0,headY,19,0,Math.PI*2);
 ctx.fill();
@@ -431,6 +557,7 @@ ctx.restore();
 
 }
 
+
 // OBSTACLES
 function drawObstacle(obstacle){
 
@@ -452,16 +579,31 @@ gradient.addColorStop(1,'#7550bd');
 ctx.fillStyle=gradient;
 
 ctx.beginPath();
+
 ctx.moveTo(obstacle.x,ground);
-ctx.lineTo(obstacle.x+15,ground-obstacle.height*.8);
-ctx.lineTo(obstacle.x+obstacle.width*.65,ground-obstacle.height);
-ctx.lineTo(obstacle.x+obstacle.width,ground);
+
+ctx.lineTo(
+obstacle.x+15,
+ground-obstacle.height*.8
+);
+
+ctx.lineTo(
+obstacle.x+obstacle.width*.65,
+ground-obstacle.height
+);
+
+ctx.lineTo(
+obstacle.x+obstacle.width,
+ground
+);
+
 ctx.closePath();
 ctx.fill();
 
 ctx.restore();
 
 }
+
 
 // OVERLAY SCREENS
 function overlay(title,lines){
@@ -470,6 +612,7 @@ ctx.fillStyle='#090615e8';
 ctx.fillRect(0,0,1200,675);
 
 ctx.textAlign='center';
+
 ctx.fillStyle='#e5c9ff';
 ctx.shadowColor='#b78aff';
 ctx.shadowBlur=18;
@@ -486,9 +629,15 @@ ctx.fillText(line,600,280+index*48);
 
 ctx.font='18px Arial';
 ctx.fillStyle='#cbb5ed';
-ctx.fillText('Use the same guide button to close',600,575);
+
+ctx.fillText(
+'Use the same guide button to close',
+600,
+575
+);
 
 }
+
 
 // DRAW GAME
 function draw(t){
@@ -501,6 +650,8 @@ obstacles.forEach(drawObstacle);
 
 drawPlayer(t);
 
+
+// START SCREEN
 if(!started){
 
 overlay('NIGHT RUN',[
@@ -511,38 +662,52 @@ overlay('NIGHT RUN',[
 
 }
 
+
+// INTERVENTION SCREEN
 if(interventionUntil>performance.now()){
 
 overlay('TAKE A MOMENT!',[
-'Your controls stay the same.',
-'Hold □ = MOVE     Press B = JUMP',
-'Continue when you are ready.'
+'Your controls are changing!',
+'B = RUN     □ = JUMP',
+'Get ready for the new controls.'
 ]);
 
 }
 
+
+// CONTROLS GUIDE
 else if(panel==='controls'){
 
-overlay('CONTROLS GUIDE',[
-'HOLD □ = MOVE / RUN',
+const swapped=elapsed>=30;
+
+overlay('CONTROLS GUIDE',swapped?[
+'AFTER 30 SECONDS:',
+'HOLD B = RUN',
+'PRESS □ = JUMP'
+]:[
+'FIRST 30 SECONDS:',
 'PRESS B = JUMP',
-'Release □ to stop moving.'
+'HOLD □ = RUN'
 ]);
 
 }
 
+
+// HOW TO PLAY
 else if(panel==='help'){
 
 overlay('HOW TO PLAY',[
-'Hold □ to move forward.',
-'Press B to jump over obstacles.',
-'Release □ to stop moving.',
+'Hold the RUN button to move forward.',
+'Press the JUMP button to jump.',
+'Your controls switch after 30 seconds.',
 'Each collision reduces health by 25%.',
 'Survive as long as you can!'
 ]);
 
 }
 
+
+// GAME OVER
 if(gameOver){
 
 overlay('RUN ENDED',[
@@ -555,30 +720,51 @@ overlay('RUN ENDED',[
 
 }
 
+
 // GAME UPDATE
 function update(dt,t){
 
-if(!started || gameOver || paused || panel || interventionUntil>t){
+if(
+!started ||
+gameOver ||
+paused ||
+panel ||
+interventionUntil>t
+){
 return;
 }
 
+// GAME TIMER
 elapsed+=dt/1000;
+
 
 // 30 SECOND INTERVENTION
 if(elapsed>=30 && !interventionShown){
 
 interventionShown=true;
+
 interventionUntil=t+4200;
+
 paused=true;
 
 return;
 
 }
 
-// TIMER
+
+// TIMER DISPLAY
 timerText.textContent=
 String(Math.floor(elapsed/60)).padStart(2,'0')+':'+
 String(Math.floor(elapsed%60)).padStart(2,'0');
+
+
+// CONTROL MAPPING
+const swapped=elapsed>=30;
+
+// Before 30 sec: Square runs
+// After 30 sec: B runs
+const moving=swapped?bDown:squareDown;
+
 
 // PLAYER PHYSICS
 player.y+=player.vy;
@@ -592,8 +778,9 @@ player.jumping=false;
 
 }
 
-// OBSTACLES MOVE ONLY WHILE SQUARE IS HELD
-if(squareDown){
+
+// OBSTACLES MOVE ONLY WHEN RUN BUTTON IS HELD
+if(moving){
 
 const speed=8;
 
@@ -601,7 +788,7 @@ obstacles.forEach(obstacle=>{
 
 obstacle.x-=speed;
 
-// RESPAWN
+// RESPAWN OBSTACLE
 if(obstacle.x< -100){
 
 obstacle.x=1300+Math.random()*350;
@@ -609,7 +796,7 @@ score++;
 
 }
 
-// COLLISION
+// COLLISION DETECTION
 let hit=
 player.x+20>obstacle.x+12 &&
 player.x-20<obstacle.x+obstacle.width-10 &&
@@ -619,8 +806,10 @@ player.y-105<ground;
 if(hit && t-lastHit>1100){
 
 energy=Math.max(0,energy-25);
+
 lastHit=t;
 
+// GAME OVER
 if(energy<=0){
 
 gameOver=true;
@@ -637,20 +826,24 @@ restartButton.style.display='inline-block';
 
 }
 
+
 // HEALTH BAR
 energyFill.style.width=energy+'%';
+
 energyText.textContent=Math.round(energy)+'%';
 
 }
 
-// MAIN LOOP
+
+// MAIN ANIMATION LOOP
 function loop(t){
 
 let dt=Math.min(t-(lastFrame||t),34);
 
 lastFrame=t;
 
-// END INTERVENTION
+
+// END INTERVENTION AFTER 4.2 SECONDS
 if(interventionUntil && t>=interventionUntil){
 
 interventionUntil=0;
@@ -659,6 +852,7 @@ paused=false;
 }
 
 update(dt,t);
+
 draw(t);
 
 requestAnimationFrame(loop);
