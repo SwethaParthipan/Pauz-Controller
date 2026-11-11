@@ -6,75 +6,259 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PAUZ - Night Run</title>
 <style>
+* { box-sizing: border-box; }
+
 body {
   margin: 0;
-  background: #17132c;
-  color: white;
-  font-family: Arial, sans-serif;
+  min-height: 100vh;
   display: grid;
   place-items: center;
-  min-height: 100vh;
+  background: #100c20;
+  color: white;
+  font-family: Arial, sans-serif;
 }
+
 main {
-  width: min(850px, 92vw);
+  width: min(1100px, 96vw);
   text-align: center;
 }
-h1 { color: #bba5ff; letter-spacing: 5px; }
-canvas {
-  width: 100%;
-  background: #292044;
-  border: 2px solid #9276df;
-  border-radius: 16px;
+
+h1 {
+  color: #c7a3ff;
+  letter-spacing: 7px;
+  margin: 8px 0 2px;
+  font-size: 27px;
 }
-#status { color: #c7b9ff; margin: 16px; }
-button {
-  background: #8565d8;
-  color: white;
+
+.subtitle {
+  color: #d9c9ff;
+  letter-spacing: 4px;
+  font-size: 12px;
+  margin: 0 0 14px;
+}
+
+.game-frame {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  border: 5px solid #514071;
+  border-radius: 42px;
+  background: #17112f;
+  box-shadow: 0 0 25px #8c58dc55,
+              inset 0 0 30px #9e6aff22;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.hud {
+  position: absolute;
+  top: 6%;
+  left: 5%;
+  right: 5%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.timer {
+  color: #fff000;
+  font-size: clamp(22px, 4vw, 38px);
+  font-weight: bold;
+  text-shadow: 0 0 15px #fff000;
+}
+
+.energy {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.heart {
+  font-size: 23px;
+}
+
+.energy small {
+  display: block;
+  text-align: right;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.energy-track {
+  width: clamp(90px, 17vw, 180px);
+  height: 13px;
+  border-radius: 20px;
+  background: #37264d;
+  overflow: hidden;
+}
+
+.energy-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 20px;
+  background: linear-gradient(90deg,#9a5bff,#d8a8ff);
+  box-shadow: 0 0 12px #bd83ff;
+  transition: width .2s;
+}
+
+#status {
+  min-height: 24px;
+  color: #d9c7ff;
+  margin: 12px;
+}
+
+#restart {
+  display: none;
   border: 0;
-  border-radius: 10px;
-  padding: 12px 24px;
+  border-radius: 12px;
+  padding: 12px 26px;
+  background: #9668df;
+  color: white;
+  font-weight: bold;
   cursor: pointer;
 }
+
+.instructions {
+  color: #d8caff;
+  font-weight: bold;
+  margin: 14px;
+}
+
 </style>
 </head>
+
 <body>
 <main>
-<h1>PAUZ</h1>
-<p> NIGHT RUN </p>
-<p id="status">Waiting for controller...</p>
-<canvas id="game" width="800" height="400"></canvas>
-<p>Use your phone controller to move and jump.</p>
+  <h1>PAUZ</h1>
+  <p class="subtitle">NIGHT RUN</p>
+
+  <div class="game-frame">
+    <div class="hud">
+      <div class="timer" id="timer">00:00</div>
+      <div class="energy">
+        <span class="heart">♥</span>
+        <div>
+          <small id="energyText">100%</small>
+          <div class="energy-track">
+            <div class="energy-fill" id="energyFill"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <canvas id="game" width="1200" height="675"></canvas>
+  </div>
+
+  <p id="status">Waiting for controller...</p>
+  <button id="restart">PLAY AGAIN</button>
+  <p class="instructions">Use your phone controller to move and jump.</p>
 </main>
+
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const statusText = document.getElementById("status");
+const timerText = document.getElementById("timer");
+const energyFill = document.getElementById("energyFill");
+const energyText = document.getElementById("energyText");
+const restartButton = document.getElementById("restart");
 
 const session = crypto.randomUUID();
-const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
+const protocol = location.protocol === "https:" ? "wss:" : "ws:";
 const ws = new WebSocket(
-  `${wsProtocol}//${location.host}/?session=${session}&role=host`
+  `${protocol}//${location.host}/?session=${session}&role=host`
 );
-
-const player = { x: 80, y: 300, vy: 0, size: 32 };
-const keys = { left: false, right: false };
-let onGround = true;
-let connected = false;
-let obstacles = [{x: 500, y: 320, w: 28, h: 48}];
-let score = 0;
 
 const controllerLink =
   `${location.origin}/controller.html?session=${session}`;
 
+let connected = false;
+let started = false;
+let gameOver = false;
+let startTime = 0;
+let elapsed = 0;
+let energy = 100;
+let score = 0;
+let lastTime = 0;
+
+const keys = { left: false, right: false };
+let jumpPressed = false;
+
+const ground = 535;
+
+const player = {
+  x: 170,
+  y: ground,
+  vy: 0,
+  jumping: false,
+  frame: 0
+};
+
+let obstacles = [];
+let stars = [];
+
+for (let i = 0; i < 100; i++) {
+  stars.push({
+    x: Math.random() * 1200,
+    y: Math.random() * 400,
+    size: Math.random() * 2.5 + .5,
+    phase: Math.random() * 6
+  });
+}
+
+function resetGame() {
+  player.x = 170;
+  player.y = ground;
+  player.vy = 0;
+  player.jumping = false;
+  player.frame = 0;
+
+  obstacles = [
+    { x: 850, width: 80, height: 120 },
+    { x: 1450, width: 75, height: 100 }
+  ];
+
+  started = true;
+  gameOver = false;
+  energy = 100;
+  score = 0;
+  elapsed = 0;
+  startTime = performance.now();
+  restartButton.style.display = "none";
+  statusText.textContent = connected
+    ? "Controller connected! Let's play!"
+    : "Waiting for controller...";
+}
+
+restartButton.onclick = resetGame;
+
 ws.onopen = () => {
-  statusText.textContent = "Waiting for your phone controller...";
+  statusText.textContent = "Waiting for phone controller...";
+
   const link = document.createElement("p");
-  link.innerHTML = `<a style="color:#c7b9ff" href="${controllerLink}">Open controller link</a>`;
-  document.querySelector("main").appendChild(link);
-  link.addEventListener("click", e => {
+  link.innerHTML =
+    `<a style="color:#d8caff" href="${controllerLink}">
+    Open controller link</a>`;
+
+  document.querySelector("main").insertBefore(
+    link, document.querySelector(".instructions")
+  );
+
+  link.querySelector("a").addEventListener("click", e => {
     e.preventDefault();
-    navigator.clipboard.writeText(controllerLink);
-    link.textContent = "Controller link copied!";
+    navigator.clipboard.writeText(controllerLink)
+      .then(() => {
+        link.querySelector("a").textContent =
+          "Controller link copied!";
+      })
+      .catch(() => {
+        link.querySelector("a").textContent =
+          "Right-click to copy controller link";
+      });
   });
 };
 
@@ -92,73 +276,256 @@ ws.onmessage = (event) => {
     keys.left = !!data.left;
     keys.right = !!data.right;
 
-    if (data.jump && onGround) {
-      player.vy = -13;
-      onGround = false;
+    if (data.jump && !jumpPressed && !gameOver) {
+      if (!started) resetGame();
+
+      if (!player.jumping) {
+        player.vy = -18;
+        player.jumping = true;
+      }
     }
+
+    jumpPressed = !!data.jump;
   }
 };
 
-function draw() {
-  ctx.clearRect(0, 0, 800, 400);
+function mountain(offset, base, height, color, step) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(0, base);
 
-  ctx.fillStyle = "#352956";
-  ctx.fillRect(0, 350, 800, 50);
+  for (let x = -step; x <= 1300; x += step) {
+    const wave = Math.sin((x + offset) * .008) * height * .35;
+    ctx.lineTo(x, base - height + wave);
+    ctx.lineTo(x + step / 2, base + 5);
+  }
 
-  ctx.fillStyle = "#bba5ff";
-  ctx.fillRect(player.x, player.y, player.size, player.size);
-
-  ctx.fillStyle = "#ff9cbb";
-  obstacles.forEach(o => {
-    ctx.fillRect(o.x, o.y, o.w, o.h);
-  });
-
-  ctx.fillStyle = "white";
-  ctx.font = "20px Arial";
-  ctx.fillText("Score: " + score, 25, 35);
+  ctx.lineTo(1200, 600);
+  ctx.lineTo(0, 600);
+  ctx.closePath();
+  ctx.fill();
 }
 
-function update() {
-  if (keys.left) player.x -= 4;
-  if (keys.right) player.x += 4;
+function drawBackground(time) {
+  const sky = ctx.createLinearGradient(0, 0, 0, 675);
+  sky.addColorStop(0, "#17102e");
+  sky.addColorStop(.65, "#251743");
+  sky.addColorStop(1, "#100d20");
 
-  player.x = Math.max(0, Math.min(768, player.x));
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, 1200, 675);
+
+  stars.forEach(star => {
+    const glow = .45 + Math.sin(time * .002 + star.phase) * .35;
+    ctx.globalAlpha = glow;
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  const moonGlow = ctx.createRadialGradient(
+    920, 220, 5, 920, 220, 90
+  );
+  moonGlow.addColorStop(0, "#e2c5ff");
+  moonGlow.addColorStop(.3, "#a66de0");
+  moonGlow.addColorStop(1, "#a66de000");
+
+  ctx.fillStyle = moonGlow;
+  ctx.beginPath();
+  ctx.arc(920, 220, 90, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#b98bea";
+  ctx.beginPath();
+  ctx.arc(920, 220, 35, 0, Math.PI * 2);
+  ctx.fill();
+
+  mountain(time * .008, 540, 200, "#24173e", 180);
+  mountain(time * .014, 550, 140, "#30204f", 230);
+
+  ctx.fillStyle = "#17102e";
+  ctx.fillRect(0, ground, 1200, 140);
+
+  ctx.fillStyle = "#3d2b5d";
+  ctx.fillRect(0, ground, 1200, 5);
+
+  ctx.fillStyle = "#49336a";
+  ctx.fillRect(0, ground + 6, 1200, 4);
+}
+
+function drawPlayer(time) {
+  const running = started && !gameOver && !player.jumping;
+  const swing = running ? Math.sin(time * .018) : 0;
+  const jumpOffset = player.jumping ? 0 : 0;
+
+  ctx.save();
+  ctx.translate(player.x, player.y + jumpOffset);
+
+  ctx.shadowColor = "#d8a4ff";
+  ctx.shadowBlur = 24;
+  ctx.strokeStyle = "#d9b4ff";
+  ctx.lineWidth = 9;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  const bob = running ? Math.abs(swing) * 5 : 0;
+  const headY = -105 - bob;
+
+  // Head
+  ctx.fillStyle = "#e5c7ff";
+  ctx.beginPath();
+  ctx.arc(0, headY, 19, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Body
+  ctx.beginPath();
+  ctx.moveTo(0, headY + 22);
+  ctx.lineTo(0, -48);
+  ctx.stroke();
+
+  // Arms
+  ctx.beginPath();
+  ctx.moveTo(0, -85);
+  ctx.lineTo(-38 - swing * 18, -65);
+  ctx.moveTo(0, -85);
+  ctx.lineTo(38 + swing * 18, -65);
+  ctx.stroke();
+
+  // Legs
+  ctx.beginPath();
+  ctx.moveTo(0, -48);
+  ctx.lineTo(-12 + swing * 20, -3);
+  ctx.moveTo(0, -48);
+  ctx.lineTo(12 - swing * 20, -3);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawObstacle(obstacle) {
+  ctx.save();
+  ctx.shadowColor = "#b78aff";
+  ctx.shadowBlur = 35;
+
+  const gradient = ctx.createLinearGradient(
+    obstacle.x, ground - obstacle.height,
+    obstacle.x + obstacle.width, ground
+  );
+  gradient.addColorStop(0, "#c7a1ff");
+  gradient.addColorStop(1, "#7550bd");
+
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.moveTo(obstacle.x, ground);
+  ctx.lineTo(obstacle.x + 15, ground - obstacle.height * .8);
+  ctx.lineTo(obstacle.x + obstacle.width * .65, ground - obstacle.height);
+  ctx.lineTo(obstacle.x + obstacle.width, ground);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function update(dt) {
+  if (!started || gameOver) return;
+
+  elapsed = (performance.now() - startTime) / 1000;
+  timerText.textContent =
+    String(Math.floor(elapsed / 60)).padStart(2, "0") + ":" +
+    String(Math.floor(elapsed % 60)).padStart(2, "0");
+
+  const speed = 5.5;
+
+  if (keys.left) player.x -= speed;
+  if (keys.right) player.x += speed;
+
+  player.x = Math.max(65, Math.min(450, player.x));
 
   player.y += player.vy;
-  player.vy += 0.6;
+  player.vy += .8;
 
-  if (player.y >= 318) {
-    player.y = 318;
+  if (player.y >= ground) {
+    player.y = ground;
     player.vy = 0;
-    onGround = true;
+    player.jumping = false;
   }
 
   obstacles.forEach(o => {
-    o.x -= 3;
-    if (o.x < -30) {
-      o.x = 820;
+    o.x -= 5.5;
+
+    if (o.x < -100) {
+      o.x = 1300 + Math.random() * 350;
       score++;
     }
 
+    const playerLeft = player.x - 20;
+    const playerRight = player.x + 20;
+    const playerTop = player.y - 105;
+
     if (
-      player.x < o.x + o.w &&
-      player.x + player.size > o.x &&
-      player.y < o.y + o.h &&
-      player.y + player.size > o.y
+      playerRight > o.x + 12 &&
+      playerLeft < o.x + o.width - 10 &&
+      player.y > ground - o.height + 10 &&
+      playerTop < ground
     ) {
-      statusText.textContent = "Game over! Refresh to play again.";
-      keys.left = false;
-      keys.right = false;
+      gameOver = true;
+      energy = 0;
+      statusText.textContent = "Run ended! Try again.";
+      restartButton.style.display = "inline-block";
     }
   });
+
+  if (!gameOver) {
+    energy = Math.max(0, 100 - elapsed * .5);
+  }
+
+  energyFill.style.width = energy + "%";
+  energyText.textContent = Math.round(energy) + "%";
 }
 
-function loop() {
-  update();
-  draw();
+function draw(time) {
+  ctx.clearRect(0, 0, 1200, 675);
+
+  drawBackground(time);
+
+  obstacles.forEach(drawObstacle);
+
+  drawPlayer(time);
+
+  if (!started) {
+    ctx.fillStyle = "#e2caff";
+    ctx.font = "bold 34px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("GET READY", 600, 340);
+    ctx.font = "19px Arial";
+    ctx.fillText("Press JUMP on your phone to begin", 600, 385);
+  }
+
+  if (gameOver) {
+    ctx.fillStyle = "#100b20aa";
+    ctx.fillRect(0, 0, 1200, 675);
+    ctx.fillStyle = "#e5c9ff";
+    ctx.font = "bold 48px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("RUN ENDED", 600, 330);
+    ctx.font = "22px Arial";
+    ctx.fillText("Score: " + score, 600, 375);
+  }
+}
+
+function loop(time) {
+  const dt = Math.min((time - lastTime) / 16.67 || 1, 2);
+  lastTime = time;
+
+  update(dt);
+  draw(time);
+
   requestAnimationFrame(loop);
 }
-loop();
+
+requestAnimationFrame(loop);
 </script>
 </body>
 </html>
