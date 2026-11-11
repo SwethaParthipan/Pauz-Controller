@@ -1,0 +1,179 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>PAUZ Controller</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #17132c;
+  color: white;
+  font-family: Arial, sans-serif;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+h1 {
+  color: #bba5ff;
+  letter-spacing: 5px;
+  margin: 4px;
+}
+#status {
+  color: #c7b9ff;
+  font-size: 13px;
+  margin: 4px;
+}
+.controller {
+  width: 100%;
+  max-width: 750px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 15px;
+  gap: 20px;
+}
+button {
+  border: 2px solid #aa91f4;
+  background: #392b61;
+  color: white;
+  font-size: 28px;
+  font-weight: bold;
+  border-radius: 20px;
+  min-width: 85px;
+  min-height: 85px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+button:active, button.pressed {
+  background: #9875e8;
+  transform: scale(.95);
+}
+.directions {
+  display: flex;
+  gap: 15px;
+}
+#jump {
+  background: #7354bd;
+  width: 115px;
+  height: 115px;
+  border-radius: 50%;
+}
+@media (orientation: portrait) {
+  body::after {
+    content: "Please rotate your phone to landscape";
+    position: fixed;
+    inset: 0;
+    background: #17132c;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    padding: 30px;
+    font-size: 20px;
+    z-index: 10;
+  }
+}
+</style>
+</head>
+<body>
+<h1>PAUZ</h1>
+<div id="status">Connecting to your game...</div>
+
+<div class="controller">
+  <div class="directions">
+    <button id="left" aria-label="Move left">←</button>
+    <button id="right" aria-label="Move right">→</button>
+  </div>
+  <button id="jump" aria-label="Jump">JUMP</button>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const session = params.get("session");
+const statusText = document.getElementById("status");
+
+const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+let ws;
+
+const input = {
+  type: "input",
+  left: false,
+  right: false,
+  jump: false
+};
+
+if (!session) {
+  statusText.textContent = "Invalid link. Please open the controller link shared by your researcher.";
+} else {
+  ws = new WebSocket(
+    `${protocol}//${location.host}/?session=${encodeURIComponent(session)}&role=controller`
+  );
+
+  ws.onopen = () => {
+    statusText.textContent = "Connected! Ready to play.";
+  };
+
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (data.type === "status") {
+      statusText.textContent = data.connected
+        ? "Connected to laptop! Let's play."
+        : "Waiting for laptop game...";
+    }
+  };
+
+  ws.onclose = () => {
+    statusText.textContent = "Disconnected. Refresh to reconnect.";
+  };
+
+  ws.onerror = () => {
+    statusText.textContent = "Connection error. Please try again.";
+  };
+}
+
+function sendInput() {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(input));
+  }
+}
+
+function bindButton(id, key) {
+  const button = document.getElementById(id);
+
+  button.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    button.setPointerCapture(event.pointerId);
+    input[key] = true;
+    button.classList.add("pressed");
+    sendInput();
+  });
+
+  function release(event) {
+    event.preventDefault();
+    input[key] = false;
+    button.classList.remove("pressed");
+    sendInput();
+  }
+
+  button.addEventListener("pointerup", release);
+  button.addEventListener("pointercancel", release);
+  button.addEventListener("lostpointercapture", () => {
+    input[key] = false;
+    button.classList.remove("pressed");
+    sendInput();
+  });
+}
+
+bindButton("left", "left");
+bindButton("right", "right");
+bindButton("jump", "jump");
+</script>
+</body>
+</html>
