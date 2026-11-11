@@ -5,93 +5,240 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>PAUZ Controller</title>
+
 <style>
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   margin: 0;
-  background: #17132c;
-  color: white;
-  font-family: Arial, sans-serif;
-  height: 100dvh;
-  overflow: hidden;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #171322;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
   touch-action: none;
 }
-h1 {
-  color: #bba5ff;
-  letter-spacing: 5px;
-  margin: 4px;
-}
-#status {
-  color: #c7b9ff;
-  font-size: 13px;
-  margin: 4px;
-}
+
 .controller {
-  width: 100%;
-  max-width: 750px;
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  padding: 15px;
-  gap: 20px;
+  width: min(96vw, 1250px);
+  aspect-ratio: 2.05 / 1;
+  position: relative;
+  border-radius: 15% / 23%;
+  background:
+    linear-gradient(145deg, #77728a 0%, #484459 32%, #302d42 70%, #242137 100%);
+  border: 5px solid #88829e;
+  box-shadow:
+    0 12px 0 #171323,
+    0 18px 0 #393449,
+    inset 0 4px 8px #d3c9ef88,
+    inset 0 -9px 15px #171322aa,
+    0 0 35px #a68adf33;
 }
-button {
-  border: 2px solid #aa91f4;
-  background: #392b61;
+
+.shoulder {
+  position: absolute;
+  top: -2%;
+  width: 25%;
+  height: 13%;
+  border-radius: 40px;
+  background: linear-gradient(180deg, #b0a9c5, #625d77 65%, #3c394e);
+  border: 3px solid #9690aa;
+  box-shadow:
+    0 5px 0 #201c30,
+    inset 0 2px 5px #ffffff77;
+}
+
+.shoulder.left { left: 11%; }
+.shoulder.right { right: 11%; }
+
+.dpad {
+  position: absolute;
+  left: 12%;
+  top: 35%;
+  width: 17%;
+  height: 36%;
+}
+
+.dpad button {
+  position: absolute;
+  width: 34%;
+  height: 34%;
+  border-radius: 9px;
+  background: linear-gradient(145deg, #69647e, #383448);
+  border: 2px solid #918ba6;
+  color: #eee8ff;
+  font-size: clamp(14px, 2.5vw, 26px);
+  box-shadow: 0 5px 0 #191626, inset 0 1px 5px #ffffff44;
+}
+
+.dpad button:active,
+.dpad button.pressed {
+  background: #9677c9;
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 #191626;
+}
+
+#up {
+  left: 33%;
+  top: 0;
+}
+#down {
+  left: 33%;
+  bottom: 0;
+}
+#left {
+  left: 0;
+  top: 33%;
+}
+#right {
+  right: 0;
+  top: 33%;
+}
+
+.center-pad {
+  position: absolute;
+  left: 33%;
+  top: 34%;
+  width: 34%;
+  height: 36%;
+  border-radius: 12px;
+  background: #262337;
+  box-shadow: inset 0 4px 10px #151323;
+  opacity: .55;
+}
+
+.face-buttons {
+  position: absolute;
+  right: 12%;
+  top: 29%;
+  width: 20%;
+  height: 43%;
+}
+
+.face-buttons button {
+  position: absolute;
+  width: 31%;
+  height: 37%;
+  border-radius: 50%;
+  border: 2px solid #aaa0c9;
+  background: radial-gradient(circle at 35% 25%, #aa94e8, #66518e 75%);
   color: white;
-  font-size: 28px;
   font-weight: bold;
-  border-radius: 20px;
-  min-width: 85px;
-  min-height: 85px;
+  font-size: clamp(16px, 2.5vw, 27px);
+  box-shadow:
+    0 5px 0 #29243b,
+    inset 0 2px 5px #ffffff66,
+    0 0 12px #a78ae955;
+}
+
+.face-buttons button:active,
+.face-buttons button.pressed {
+  transform: translateY(3px) scale(.96);
+  background: #b18ae9;
+  box-shadow: 0 2px 0 #29243b;
+}
+
+#y { top: 0; left: 35%; }
+#x { top: 36%; left: 0; }
+#b { top: 36%; right: 0; }
+#a { bottom: 0; left: 35%; }
+
+.utility {
+  position: absolute;
+  bottom: 8%;
+  left: 34%;
+  width: 32%;
+  display: flex;
+  justify-content: space-between;
+}
+
+.utility button {
+  width: clamp(44px, 8vw, 82px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 5px double #aaa2bd;
+  background: radial-gradient(circle, #716b85, #292638);
+  color: #eee7ff;
+  font-size: clamp(17px, 2.4vw, 28px);
+  box-shadow: 0 0 12px #bca8e044, inset 0 2px 6px #ffffff55;
+}
+
+button {
+  cursor: pointer;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
 }
-button:active, button.pressed {
-  background: #9875e8;
-  transform: scale(.95);
+
+#status {
+  position: fixed;
+  top: 5px;
+  left: 0;
+  right: 0;
+  color: #d9c7ff;
+  text-align: center;
+  font-size: 12px;
+  z-index: 5;
 }
-.directions {
-  display: flex;
-  gap: 15px;
-}
-#jump {
-  background: #7354bd;
-  width: 115px;
-  height: 115px;
-  border-radius: 50%;
-}
+
 @media (orientation: portrait) {
   body::after {
     content: "Please rotate your phone to landscape";
     position: fixed;
     inset: 0;
-    background: #17132c;
+    z-index: 10;
     display: grid;
     place-items: center;
-    text-align: center;
-    padding: 30px;
+    padding: 25px;
+    background: #171322;
+    color: #e2d4ff;
     font-size: 20px;
-    z-index: 10;
+    text-align: center;
+  }
+}
+
+@media (max-height: 350px) {
+  .controller {
+    width: min(88vw, 750px);
   }
 }
 </style>
 </head>
+
 <body>
-<h1>PAUZ</h1>
+
 <div id="status">Connecting to your game...</div>
 
 <div class="controller">
-  <div class="directions">
-    <button id="left" aria-label="Move left">←</button>
-    <button id="right" aria-label="Move right">→</button>
+  <div class="shoulder left"></div>
+  <div class="shoulder right"></div>
+
+  <div class="center-pad"></div>
+
+  <div class="dpad">
+    <button id="up">△</button>
+    <button id="left">□</button>
+    <button id="right">○</button>
+    <button id="down">×</button>
   </div>
-  <button id="jump" aria-label="Jump">JUMP</button>
+
+  <div class="face-buttons">
+    <button id="y">Y</button>
+    <button id="x">X</button>
+    <button id="b">B</button>
+    <button id="a">A</button>
+  </div>
+
+  <div class="utility">
+    <button aria-label="Menu">♧</button>
+    <button aria-label="Help">?</button>
+  </div>
 </div>
 
 <script>
@@ -110,7 +257,7 @@ const input = {
 };
 
 if (!session) {
-  statusText.textContent = "Invalid link. Please open the controller link shared by your researcher.";
+  statusText.textContent = "Invalid controller link";
 } else {
   ws = new WebSocket(
     `${protocol}//${location.host}/?session=${encodeURIComponent(session)}&role=controller`
@@ -124,7 +271,7 @@ if (!session) {
     const data = JSON.parse(event.data);
     if (data.type === "status") {
       statusText.textContent = data.connected
-        ? "Connected to laptop! Let's play."
+        ? "Connected to laptop!"
         : "Waiting for laptop game...";
     }
   };
@@ -134,7 +281,7 @@ if (!session) {
   };
 
   ws.onerror = () => {
-    statusText.textContent = "Connection error. Please try again.";
+    statusText.textContent = "Connection error.";
   };
 }
 
@@ -173,7 +320,10 @@ function bindButton(id, key) {
 
 bindButton("left", "left");
 bindButton("right", "right");
-bindButton("jump", "jump");
+bindButton("a", "jump");
+bindButton("y", "jump");
+bindButton("up", "jump");
 </script>
+
 </body>
 </html>
