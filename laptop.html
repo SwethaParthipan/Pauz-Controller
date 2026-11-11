@@ -1,0 +1,164 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAUZ - Night Run</title>
+<style>
+body {
+  margin: 0;
+  background: #17132c;
+  color: white;
+  font-family: Arial, sans-serif;
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+}
+main {
+  width: min(850px, 92vw);
+  text-align: center;
+}
+h1 { color: #bba5ff; letter-spacing: 5px; }
+canvas {
+  width: 100%;
+  background: #292044;
+  border: 2px solid #9276df;
+  border-radius: 16px;
+}
+#status { color: #c7b9ff; margin: 16px; }
+button {
+  background: #8565d8;
+  color: white;
+  border: 0;
+  border-radius: 10px;
+  padding: 12px 24px;
+  cursor: pointer;
+}
+</style>
+</head>
+<body>
+<main>
+<h1>PAUZ</h1>
+<p> NIGHT RUN </p>
+<p id="status">Waiting for controller...</p>
+<canvas id="game" width="800" height="400"></canvas>
+<p>Use your phone controller to move and jump.</p>
+</main>
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const statusText = document.getElementById("status");
+
+const session = crypto.randomUUID();
+const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
+const ws = new WebSocket(
+  `${wsProtocol}//${location.host}/?session=${session}&role=host`
+);
+
+const player = { x: 80, y: 300, vy: 0, size: 32 };
+const keys = { left: false, right: false };
+let onGround = true;
+let connected = false;
+let obstacles = [{x: 500, y: 320, w: 28, h: 48}];
+let score = 0;
+
+const controllerLink =
+  `${location.origin}/controller.html?session=${session}`;
+
+ws.onopen = () => {
+  statusText.textContent = "Waiting for your phone controller...";
+  const link = document.createElement("p");
+  link.innerHTML = `<a style="color:#c7b9ff" href="${controllerLink}">Open controller link</a>`;
+  document.querySelector("main").appendChild(link);
+  link.addEventListener("click", e => {
+    e.preventDefault();
+    navigator.clipboard.writeText(controllerLink);
+    link.textContent = "Controller link copied!";
+  });
+};
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+
+  if (data.type === "status") {
+    connected = data.connected;
+    statusText.textContent = connected
+      ? "Controller connected! Let's play!"
+      : "Waiting for controller...";
+  }
+
+  if (data.type === "input") {
+    keys.left = !!data.left;
+    keys.right = !!data.right;
+
+    if (data.jump && onGround) {
+      player.vy = -13;
+      onGround = false;
+    }
+  }
+};
+
+function draw() {
+  ctx.clearRect(0, 0, 800, 400);
+
+  ctx.fillStyle = "#352956";
+  ctx.fillRect(0, 350, 800, 50);
+
+  ctx.fillStyle = "#bba5ff";
+  ctx.fillRect(player.x, player.y, player.size, player.size);
+
+  ctx.fillStyle = "#ff9cbb";
+  obstacles.forEach(o => {
+    ctx.fillRect(o.x, o.y, o.w, o.h);
+  });
+
+  ctx.fillStyle = "white";
+  ctx.font = "20px Arial";
+  ctx.fillText("Score: " + score, 25, 35);
+}
+
+function update() {
+  if (keys.left) player.x -= 4;
+  if (keys.right) player.x += 4;
+
+  player.x = Math.max(0, Math.min(768, player.x));
+
+  player.y += player.vy;
+  player.vy += 0.6;
+
+  if (player.y >= 318) {
+    player.y = 318;
+    player.vy = 0;
+    onGround = true;
+  }
+
+  obstacles.forEach(o => {
+    o.x -= 3;
+    if (o.x < -30) {
+      o.x = 820;
+      score++;
+    }
+
+    if (
+      player.x < o.x + o.w &&
+      player.x + player.size > o.x &&
+      player.y < o.y + o.h &&
+      player.y + player.size > o.y
+    ) {
+      statusText.textContent = "Game over! Refresh to play again.";
+      keys.left = false;
+      keys.right = false;
+    }
+  });
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
