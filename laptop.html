@@ -40,12 +40,20 @@ h1 {
 .game-frame {
   position: relative;
   overflow: hidden;
-  width: 100%;
+  width: 85%;
+  max-width: 950px;
+  margin: 0 auto;
   border: 5px solid #514071;
-  border-radius: 42px;
+  border-radius: 35px;
   background: #17112f;
   box-shadow: 0 0 25px #8c58dc55,
               inset 0 0 30px #9e6aff22;
+}
+
+@media (max-width: 700px) {
+  .game-frame {
+    width: 100%;
+  }
 }
 
 canvas {
