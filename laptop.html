@@ -168,9 +168,8 @@ if(gameOver||panel||interventionUntil>performance.now())return;
 
 if(!started)resetGame();
 
-if(button==='B'&&!player.jumping){
-player.vy=-19;
-player.jumping=true;
+if(button==='B'){
+jumpQueued=true;
 }
 }
 
